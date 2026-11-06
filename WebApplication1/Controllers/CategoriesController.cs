@@ -46,6 +46,14 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpPost]
+    public ActionResult<Category> Create([FromBody] Category category)
+    {
+        category.Id = _store.GetNextCategoryId();
+        _store.Categories[category.Id] = category;
+        return CreatedAtAction(nameof(GetById), new { id = category.Id }, category);
+    }
+
+    [HttpPut("{id:int}")]
     public IActionResult Update(int id, [FromBody] Category updated)
     {
         if (!_store.Categories.ContainsKey(id))
