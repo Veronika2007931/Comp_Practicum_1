@@ -1,3 +1,5 @@
+using CoffeeShopApi.Models;
+
 public class MenuItem
 {
     public int Id { get; set; }
@@ -6,4 +8,7 @@ public class MenuItem
     public decimal Price { get; set; }
     public int VolumeMl { get; set; }
     public int CategoryId { get; set; }
+
+    public Category? Category { get; set; }
+
 }
