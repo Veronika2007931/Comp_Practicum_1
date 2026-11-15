@@ -1,6 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
-using CoffeeShopApi.Data;
+using CoffeeShopApi.DTOs;
 using CoffeeShopApi.Models;
+using CoffeeShopApi.Repositories;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CoffeeShopApi.Controllers;
 
@@ -8,73 +9,122 @@ namespace CoffeeShopApi.Controllers;
 [Route("api/[controller]")]
 public class MenuItemsController : ControllerBase
 {
-    private readonly InMemoryStore _store;
+    private readonly IMenuItemRepository _menuItemRepository;
+    private readonly ICategoryRepository _categoryRepository;
 
-    public MenuItemsController(InMemoryStore store)
+    public MenuItemsController(
+        IMenuItemRepository menuItemRepository,
+        ICategoryRepository categoryRepository)
     {
-        _store = store;
+        _menuItemRepository = menuItemRepository;
+        _categoryRepository = categoryRepository;
     }
+
 
     [HttpGet]
-    public ActionResult<IEnumerable<MenuItem>> GetAll()
+    public async Task<ActionResult<IEnumerable<MenuItemDto>>> GetAll()
     {
-        return Ok(_store.MenuItems.Values);
+        var items = await _menuItemRepository.GetAllAsync();
+        var dtos = items.Select(MapToDto);
+        return Ok(dtos);
     }
+
 
     [HttpGet("{id:int}")]
-    public ActionResult<MenuItem> GetById(int id)
+    public async Task<ActionResult<MenuItemDto>> GetById(int id)
     {
-        if (_store.MenuItems.TryGetValue(id, out var menuItem))
+        var item = await _menuItemRepository.GetByIdAsync(id);
+        if (item is null)
         {
-            return Ok(menuItem);
+            return NotFound($"Позицію меню з ID {id} не знайдено.");
         }
-        return NotFound($"Позицію з ID {id} не знайдено.");
+
+        return Ok(MapToDto(item));
     }
+
 
     [HttpPost]
-    public ActionResult<MenuItem> Create([FromBody] MenuItem menuItem)
+    public async Task<ActionResult<MenuItemDto>> Create([FromBody] CreateUpdateMenuItemDto dto)
     {
-        if (!_store.Categories.ContainsKey(menuItem.CategoryId))
+        // Перевіряємо, чи існує вказана категорія в БД
+        if (!await _categoryRepository.ExistsAsync(dto.CategoryId))
         {
-            return BadRequest($"Категорії з ID {menuItem.CategoryId} не існує.");
+            return BadRequest($"Категорії з ID {dto.CategoryId} не існує.");
         }
-        menuItem.Id = _store.GetNextMenuItemId();
-        _store.MenuItems[menuItem.Id] = menuItem;
-        return CreatedAtAction(nameof(GetById), new { id = menuItem.Id }, menuItem);
+
+        var menuItem = new MenuItem
+        {
+            Name = dto.Name,
+            Description = dto.Description,
+            Price = dto.Price,
+            VolumeMl = dto.VolumeMl,
+            CategoryId = dto.CategoryId
+        };
+
+        var created = await _menuItemRepository.AddAsync(menuItem);
+        var resultDto = MapToDto(created);
+
+        return CreatedAtAction(nameof(GetById), new { id = resultDto.Id }, resultDto);
     }
+
 
     [HttpPut("{id:int}")]
-    public IActionResult Update(int id, [FromBody] MenuItem updated)
+    public async Task<IActionResult> Update(int id, [FromBody] CreateUpdateMenuItemDto dto)
     {
-        if (!_store.MenuItems.ContainsKey(id))
+        if (!await _categoryRepository.ExistsAsync(dto.CategoryId))
         {
-            return NotFound($"Позицію з ID {id} не знайдено.");
-        }
-        if (!_store.Categories.ContainsKey(updated.CategoryId))
-        {
-            return BadRequest($"Категорії з ID {updated.CategoryId} не існує.");
+            return BadRequest($"Категорії з ID {dto.CategoryId} не існує.");
         }
 
-        updated.Id = id;
-        _store.MenuItems[id] = updated;
-        return Ok(updated);
-    }
+        var menuItem = new MenuItem
+        {
+            Id = id,
+            Name = dto.Name,
+            Description = dto.Description,
+            Price = dto.Price,
+            VolumeMl = dto.VolumeMl,
+            CategoryId = dto.CategoryId
+        };
 
-    [HttpDelete]
-    public IActionResult DeleteAll()
-    {
-        _store.MenuItems.Clear();
+        var updated = await _menuItemRepository.UpdateAsync(menuItem);
+        if (!updated)
+        {
+            return NotFound($"Позицію меню з ID {id} не знайдено.");
+        }
+
         return NoContent();
     }
 
 
     [HttpDelete("{id:int}")]
-    public IActionResult DeleteById(int id)
+    public async Task<IActionResult> DeleteById(int id)
     {
-        if (_store.MenuItems.TryRemove(id, out _))
+        var deleted = await _menuItemRepository.DeleteAsync(id);
+        if (!deleted)
         {
-            return NoContent();
+            return NotFound($"Позицію меню з ID {id} не знайдено.");
         }
-        return NotFound($"Позицію з ID {id} не знайдено.");
+
+        return NoContent();
     }
+
+
+    [HttpDelete]
+    public async Task<IActionResult> DeleteAll()
+    {
+        await _menuItemRepository.DeleteAllAsync();
+        return NoContent();
+    }
+
+
+    private static MenuItemDto MapToDto(MenuItem item) => new()
+    {
+        Id = item.Id,
+        Name = item.Name,
+        Description = item.Description,
+        Price = item.Price,
+        VolumeMl = item.VolumeMl,
+        CategoryId = item.CategoryId,
+        CategoryName = item.Category?.Name
+    };
 }
