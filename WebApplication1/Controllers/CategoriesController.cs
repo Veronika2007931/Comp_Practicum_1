@@ -22,7 +22,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Category>>> GetAll()
+    public async Task<ActionResult<IEnumerable<CategoryDto>>> GetAll()
     {
         var categories = await _categoryRepository.GetAllAsync();
         var dtos = categories.Select(c => new CategoryDto
@@ -37,7 +37,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Category>> GetById(int id)
+    public async Task<ActionResult<CategoryDto>> GetById(int id)
     {
         var category = await _categoryRepository.GetByIdAsync(id);
         if (category is null)
@@ -54,7 +54,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpGet("{id:int}/items")]
-    public async Task<ActionResult<IEnumerable<MenuItem>>> GetItemsByCategory(int id)
+    public async Task<ActionResult<IEnumerable<MenuItemDto>>> GetItemsByCategory(int id)
     {
         if (!await _categoryRepository.ExistsAsync(id))
         {
@@ -76,7 +76,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Category>> Create([FromBody] CreateUpdateCategoryDto dto)
+    public async Task<ActionResult<CategoryDto>> Create([FromBody] CreateUpdateCategoryDto dto)
     {
         var category = new Category
         {

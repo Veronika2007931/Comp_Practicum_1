@@ -16,7 +16,7 @@ public class CreateUpdateMenuItemValidator : AbstractValidator<CreateUpdateMenuI
 
         RuleFor(x => x.Price)
         .GreaterThan(0).WithMessage("Ціна повинна бути більшою за 0 грн.")
-        .LessThanOrEqualTo(1000).WithMessage("Ціна не може перевищувати 10 000 грн.");
+        .LessThanOrEqualTo(10000).WithMessage("Ціна не може перевищувати 10 000 грн.");
 
         RuleFor(x => x.VolumeMl)
         .InclusiveBetween(10, 2000).WithMessage("Об'єм або вага повинні бути в межах від 10 до 2000 (мл/г).");
